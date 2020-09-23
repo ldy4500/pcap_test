@@ -1,5 +1,6 @@
 #include <pcap.h>
 #include <stdio.h>
+#include <netinet/in.h>
 
 void usage(){
 	printf("syntax: pcap-test <interface>\n");
@@ -25,9 +26,12 @@ typedef struct libnet_tcp_hdr{
 	u_int16_t src_port;
 	u_int16_t dst_port;
 	u_int8_t Trash[8];
-	u_int8_t length;
+	u_int8_t off:4,length:4;
 }TCP_Header;
 
+typedef struct Datai_file{
+	u_int8_t data[16];
+}Data;
 
 void print_Ethernet_Header(const u_char* packet){
 	Ethernet_Header *Header;
@@ -47,8 +51,18 @@ void print_IP_Header(const u_char* packet){
 void print_TCP_Header(const u_char* packet){
 	TCP_Header *Header;
 	Header = (TCP_Header*)packet;
-	printf("src Port: %d\n",Header->src_port);
-	printf("dst Port: %d\n",Header->dst_port);
+	printf("src Port: %u\n", ntohs(Header->src_port));
+	printf("dst Port: %u\n", ntohs(Header->dst_port));
+}
+
+void print_Data(const u_char* packet){
+	Data *Header;
+	Header = (Data*)packet;
+	printf("DATA : ");
+	for(int i=0; i<16; i++){
+		printf("%02x",Header->data[i]);
+	}
+	printf("\n\n");
 }
 
 int main(int argc, char* argv[]){
@@ -79,13 +93,19 @@ int main(int argc, char* argv[]){
 		print_IP_Header(packet);
 		IP_Header *tmp;
 		tmp = (IP_Header*)packet;
-		printf("\n %d \n\n",tmp->length);
 		packet+=(u_int16_t)(tmp->length)*4;
 		print_TCP_Header(packet);
+		TCP_Header *tmp1;
+		tmp1 = (TCP_Header*)packet;
+		packet+=(u_int16_t)(tmp1->length)*4;
+		print_Data(packet);
 	}
 
 	pcap_close(handle);
 }
+
+
+
 
 
 
